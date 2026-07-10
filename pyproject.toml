@@ -1,0 +1,90 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "quanttrade-platform"
+version = "0.1.0"
+description = "QuantTrade Platform — institutional systematic trading system (internal monorepo)"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "Proprietary" }
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "mypy>=1.13,<2",
+    "ruff>=0.8,<1",
+    "pytest>=8.3,<9",
+    "import-linter>=2.1,<3",
+]
+
+# --- Packaging -----------------------------------------------------------
+# domain/, application/, infrastructure/ are the three top-level layers.
+# tests/ is intentionally excluded — it is dev-only and never installed.
+
+[tool.setuptools.packages.find]
+include = ["domain*", "application*", "infrastructure*"]
+
+# --- Ruff (lint + format) --------------------------------------------------
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["domain", "application", "infrastructure", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes
+    "I",   # isort (import ordering)
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "N",   # pep8-naming
+    "SIM", # flake8-simplify
+]
+ignore = []
+
+[tool.ruff.lint.isort]
+known-first-party = ["domain", "application", "infrastructure"]
+
+# --- Mypy -------------------------------------------------------------
+# Strict typing is a hard requirement on domain/ and application/ only
+# (ARCHITECTURE.md §3.5). infrastructure/ and tests/ are intentionally
+# not covered here — infrastructure adapters wrap third-party SDKs whose
+# stubs are frequently incomplete, and that is a separate, later concern.
+
+[tool.mypy]
+python_version = "3.12"
+files = ["domain", "application"]
+strict = true
+warn_unused_configs = true
+
+# --- Pytest -------------------------------------------------------------
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+
+# --- Import Linter --------------------------------------------------------
+# Enforces the dependency rule from ARCHITECTURE.md §3.5:
+#   domain <- application <- infrastructure
+# Layers are listed highest-to-lowest: a higher layer may import a lower
+# one, never the reverse. domain (lowest) may therefore import nothing
+# from application or infrastructure.
+
+[tool.importlinter]
+root_packages = [
+    "domain",
+    "application",
+    "infrastructure",
+]
+
+[[tool.importlinter.contracts]]
+name = "Layered architecture: domain has zero outward dependencies"
+type = "layers"
+layers = [
+    "infrastructure",
+    "application",
+    "domain",
+]

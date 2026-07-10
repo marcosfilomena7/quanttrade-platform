@@ -1,0 +1,33 @@
+# Virtual environment
+.venv/
+venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+
+# Tool caches
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.grimp_cache/
+.import_linter_cache/
+.coverage
+htmlcov/
+
+# Secrets — never committed, ever (see ARCHITECTURE.md §3.6)
+.env
+.env.*
+*.pem
+*.key
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Claude Code local session settings (machine-local, not shared config)
+.claude/settings.local.json

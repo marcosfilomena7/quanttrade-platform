@@ -1,0 +1,40 @@
+name: CI
+
+"on":
+  push:
+  pull_request:
+
+# A new push to the same branch/PR cancels any CI run already in progress
+# for it — fail fast in the "don't waste time on a superseded commit" sense.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    name: Lint, typecheck, test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: pyproject.toml
+
+      - name: Install project + dev toolchain
+        run: make install
+
+      - name: Lint (ruff + import-linter layering check)
+        run: make lint
+
+      - name: Typecheck (mypy --strict on domain/ and application/)
+        run: make typecheck
+
+      - name: Test (pytest, unit only — no Docker in Phase 0)
+        run: make test
