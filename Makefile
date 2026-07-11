@@ -32,11 +32,13 @@ install: venv
 	$(PYTHON) -m pip install -e ".[dev]"
 
 ## Static analysis: style/correctness (ruff) + architectural layering (import-linter)
-## + the float ban on domain/ and application/ (see ARCHITECTURE.md §3.5).
+## + the float ban on domain/ and application/ (ARCHITECTURE.md §3.5) + the
+## os.environ secrets ban outside infrastructure/secrets/ (ARCHITECTURE.md §3.6).
 lint:
 	$(RUFF) check .
 	$(LINT_IMPORTS)
 	$(PYTHON) scripts/check_no_float.py domain application
+	$(PYTHON) scripts/check_no_env_secrets.py domain application infrastructure
 
 ## Strict static typing on domain/ and application/ (see pyproject.toml).
 typecheck:
