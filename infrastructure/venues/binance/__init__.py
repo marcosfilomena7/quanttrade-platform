@@ -24,6 +24,13 @@ latest-tick cache — none of those are in its own task's scope.
 every WS reconnect triggers a REST gap-fill (T-P1-04's `backfill_candles`)
 plus a sequence re-validation (T-P1-05's `run_validation_suite`) — via
 the `make_gap_fill` factory — before candle publication resumes.
+
+`SymbolStalenessWatchdog` (T-P1-10) is a connection-agnostic, per-symbol
+staleness watchdog: fed via `record_received(symbol)`, it runs its own
+async task and emits `SymbolFeedStale` (distinct from T-P1-07's
+connection-level `FeedStale`) plus a P1-tagged log line and the
+`data_staleness_seconds` metric (T-P0-08) whenever a symbol goes quiet
+for longer than its configured threshold.
 """
 
 from __future__ import annotations
@@ -47,6 +54,10 @@ from infrastructure.venues.binance.models import (
     SymbolFilter,
 )
 from infrastructure.venues.binance.rate_limiter import RateLimitTracker
+from infrastructure.venues.binance.staleness_watchdog import (
+    SymbolFeedStale,
+    SymbolStalenessWatchdog,
+)
 from infrastructure.venues.binance.websocket_client import (
     BinanceWebSocketClient,
     FeedStale,
@@ -74,4 +85,6 @@ __all__ = [
     "CandleClosed",
     "GapFillingCandleStream",
     "make_gap_fill",
+    "SymbolFeedStale",
+    "SymbolStalenessWatchdog",
 ]
