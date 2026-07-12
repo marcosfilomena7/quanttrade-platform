@@ -19,6 +19,11 @@ this client's `on_message` callback.
 `CandleClosed` event per closed bar. It does not itself own a WS
 connection, REST gap-fill on reconnect (T-P1-09), or a Redis-backed
 latest-tick cache — none of those are in its own task's scope.
+
+`GapFillingCandleStream` (T-P1-09) wraps `BinanceCandleStream` so that
+every WS reconnect triggers a REST gap-fill (T-P1-04's `backfill_candles`)
+plus a sequence re-validation (T-P1-05's `run_validation_suite`) — via
+the `make_gap_fill` factory — before candle publication resumes.
 """
 
 from __future__ import annotations
@@ -33,6 +38,7 @@ from infrastructure.venues.binance.errors import (
     VenueServerError,
     VenueTimestampError,
 )
+from infrastructure.venues.binance.gap_fill_stream import GapFillingCandleStream, make_gap_fill
 from infrastructure.venues.binance.models import (
     AccountBalance,
     AccountResponse,
@@ -66,4 +72,6 @@ __all__ = [
     "backoff_delay",
     "BinanceCandleStream",
     "CandleClosed",
+    "GapFillingCandleStream",
+    "make_gap_fill",
 ]
