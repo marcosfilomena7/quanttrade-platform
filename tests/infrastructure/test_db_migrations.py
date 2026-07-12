@@ -28,7 +28,15 @@ try:
     _container_probe = PostgresContainer(
         image="timescale/timescaledb:2.17.2-pg16", driver="psycopg"
     )
-    _container_probe.get_docker_client()
+    # get_docker_client() only builds a client bound to the docker
+    # socket/API — it never itself talks to the daemon, so it can succeed
+    # even where a docker socket/context is present but the daemon isn't
+    # actually reachable (observed on GitHub Actions runners: the client
+    # constructs fine, then the first real container operation fails with
+    # "connection refused" against a PostgreSQL that was never started).
+    # `.ping()` performs one real round trip to the daemon and raises if
+    # it can't be reached — that is the actual "is Docker usable" check.
+    _container_probe.get_docker_client().client.ping()
     _DOCKER_AVAILABLE = True
 except Exception:  # noqa: BLE001 — any failure here just means "skip this module"
     _DOCKER_AVAILABLE = False
