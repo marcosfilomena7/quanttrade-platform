@@ -19,11 +19,12 @@ def _table(name: str) -> sa.Table:
     return metadata.tables[name]
 
 
-def test_exactly_25_tables_are_registered() -> None:
+def test_exactly_26_tables_are_registered() -> None:
     """23 DATABASE.md entities + trade_tick (T-P0-11, see market_data.py's
     docstring) + candle_backfill_checkpoint (T-P1-04, see backfill.py's
+    docstring) + data_quality_event (T-P1-05, see data_quality.py's
     docstring)."""
-    assert len(metadata.tables) == 25
+    assert len(metadata.tables) == 26
 
 
 def test_risk_limit_config_is_permanently_excluded() -> None:
@@ -34,7 +35,7 @@ def test_risk_limit_config_is_permanently_excluded() -> None:
     assert "risklimitconfig" not in names
 
 
-def test_all_23_database_md_entities_plus_trade_tick_and_checkpoint_are_present() -> None:
+def test_all_23_database_md_entities_plus_checkpoint_and_quality_event_are_present() -> None:
     expected = {
         "venue",
         "instrument",
@@ -61,6 +62,7 @@ def test_all_23_database_md_entities_plus_trade_tick_and_checkpoint_are_present(
         "backtest_trade",
         "backtest_metrics",
         "candle_backfill_checkpoint",
+        "data_quality_event",
     }
     assert set(metadata.tables.keys()) == expected
 
@@ -121,3 +123,11 @@ def test_candle_backfill_checkpoint_primary_key_is_its_natural_request_key() -> 
     checkpoint = _table("candle_backfill_checkpoint")
     pk_columns = {col.name for col in checkpoint.primary_key.columns}
     assert pk_columns == {"venue_id", "instrument_id", "interval", "range_start", "range_end"}
+
+
+def test_data_quality_event_has_a_foreign_key_to_instrument() -> None:
+    """T-P1-05: see data_quality.py's module docstring for why this table,
+    unlike EventLog, is not FK-less."""
+    event = _table("data_quality_event")
+    fk_targets = {fk.column.table.name for fk in event.foreign_keys}
+    assert fk_targets == {"instrument"}

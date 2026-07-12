@@ -120,6 +120,28 @@ def test_reference_data_changed_increments_per_venue_symbol_field() -> None:
     )
 
 
+def test_data_quality_violations_total_metric_is_defined() -> None:
+    """TASKS.md T-P1-05: "Violations write to a data_quality_event log
+    table and emit metrics.\""""
+    assert isinstance(m.data_quality_violations_total, Counter)
+
+
+def test_data_quality_violations_total_is_scrapeable_by_name() -> None:
+    text = _scrape()
+    assert "# TYPE data_quality_violations_total counter" in text
+
+
+def test_data_quality_violations_total_increments_per_check_and_severity() -> None:
+    m.data_quality_violations_total.labels(
+        check="ohlc_invariant_test_only", severity="quarantined"
+    ).inc()
+    text = _scrape()
+    assert (
+        'data_quality_violations_total{check="ohlc_invariant_test_only",'
+        'severity="quarantined"} 1.0' in text
+    )
+
+
 def test_data_staleness_seconds_accepts_a_new_symbol_without_pre_declaration() -> None:
     """TASKS.md T-P0-08: "`data_staleness_seconds` can be updated per symbol
     without a metric per symbol being pre-declared." A brand-new label

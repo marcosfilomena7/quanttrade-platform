@@ -73,3 +73,19 @@ reference_data_changed = Counter(
     ["venue", "symbol", "field"],
     registry=REGISTRY,
 )
+
+# TASKS.md T-P1-05: "Violations write to a data_quality_event log table
+# and emit metrics." Unlike reference_data_changed (T-P1-02), no literal
+# metric name is given, so this follows the file's own `_total` naming
+# convention. Labeled only by `check`/`severity` — not by instrument or
+# symbol — because this metric can fire once per candle validated
+# (potentially every bar of every instrument), and per-symbol labels
+# here would multiply cardinality by every instrument this platform ever
+# tracks; `check`/`severity` alone already answers "is data quality
+# degrading, and how" without that growth.
+data_quality_violations_total = Counter(
+    "data_quality_violations_total",
+    "Total number of data quality violations detected, by check and severity.",
+    ["check", "severity"],
+    registry=REGISTRY,
+)

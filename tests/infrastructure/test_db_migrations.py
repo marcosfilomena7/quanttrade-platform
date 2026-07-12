@@ -238,9 +238,10 @@ def _insert_order(
 def test_alembic_upgrade_head_runs_against_a_clean_database_with_zero_errors(
     db_engine: sa.Engine,
 ) -> None:
-    """25 tables as of T-P1-04: T-P0-11's 24 (23 DATABASE.md entities +
-    trade_tick) plus candle_backfill_checkpoint (see
-    infrastructure/db/tables/backfill.py's docstring)."""
+    """26 tables as of T-P1-05: T-P0-11's 24 (23 DATABASE.md entities +
+    trade_tick) plus candle_backfill_checkpoint (T-P1-04) plus
+    data_quality_event (T-P1-05) — see infrastructure/db/tables/
+    backfill.py and data_quality.py's docstrings."""
     with db_engine.connect() as conn:
         table_count = conn.execute(
             text(
@@ -248,7 +249,7 @@ def test_alembic_upgrade_head_runs_against_a_clean_database_with_zero_errors(
                 "WHERE table_schema = 'public' AND table_name != 'alembic_version'"
             )
         ).scalar_one()
-    assert table_count == 25
+    assert table_count == 26
 
 
 def test_order_venue_id_client_order_id_unique_violation(db_engine: sa.Engine) -> None:
