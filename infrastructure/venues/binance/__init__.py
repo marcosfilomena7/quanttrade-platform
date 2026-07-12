@@ -11,12 +11,19 @@ OHLCV backfill job (T-P1-04).
 `BinanceWebSocketClient` is the persistent-connection counterpart
 (T-P1-07): heartbeat, sequence tracking, staleness detection, and
 backoff+jitter reconnect. It has no message-normalization logic of its
-own — that is T-P1-08's job, built on top of this client's `on_message`
-callback.
+own — that is `BinanceCandleStream`'s job (T-P1-08), built on top of
+this client's `on_message` callback.
+
+`BinanceCandleStream` (T-P1-08) normalizes raw kline WS frames into
+`Candle` objects, stamps `exchange_ts`/`local_recv_ts`, and publishes a
+`CandleClosed` event per closed bar. It does not itself own a WS
+connection, REST gap-fill on reconnect (T-P1-09), or a Redis-backed
+latest-tick cache — none of those are in its own task's scope.
 """
 
 from __future__ import annotations
 
+from infrastructure.venues.binance.candle_stream import BinanceCandleStream, CandleClosed
 from infrastructure.venues.binance.client import BinanceRestClient
 from infrastructure.venues.binance.errors import (
     BinanceAPIError,
@@ -57,4 +64,6 @@ __all__ = [
     "BinanceWebSocketClient",
     "FeedStale",
     "backoff_delay",
+    "BinanceCandleStream",
+    "CandleClosed",
 ]
