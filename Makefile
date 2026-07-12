@@ -20,7 +20,7 @@ MYPY        := $(VENV_BIN)/mypy$(EXE)
 PYTEST      := $(VENV_BIN)/pytest$(EXE)
 LINT_IMPORTS := $(VENV_BIN)/lint-imports$(EXE)
 
-.PHONY: venv install lint typecheck test check clean dev-up dev-down
+.PHONY: venv install lint typecheck test check clean dev-up dev-down adr-check
 
 ## Create the virtual environment if it doesn't already exist.
 venv:
@@ -48,8 +48,18 @@ typecheck:
 test:
 	$(PYTEST)
 
+## docs/adr/ is append-only (T-P0-12): fails if any file under docs/adr/
+## was deleted or moved out of the directory between BASE_REF and
+## HEAD_REF. Defaults compare against the previous local commit so a
+## developer can run this unmodified; CI overrides both to the actual
+## base/head of the push or pull request.
+BASE_REF ?= HEAD~1
+HEAD_REF ?= HEAD
+adr-check:
+	$(PYTHON) scripts/check_adr_not_deleted.py $(BASE_REF) $(HEAD_REF)
+
 ## Everything CI runs, in one target.
-check: lint typecheck test
+check: lint typecheck test adr-check
 
 ## Remove the venv and all tool caches.
 clean:
