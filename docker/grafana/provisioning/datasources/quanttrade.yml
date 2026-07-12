@@ -1,0 +1,27 @@
+# Placeholder Grafana datasource for local dev.
+#
+# TASKS.md T-P0-10: "Grafana (pre-seeded with a placeholder datasource)."
+# Points at the app Postgres/TimescaleDB container from docker-compose.yml
+# so Grafana starts up with something queryable rather than a completely
+# empty instance. This is a starting point for later phases' dashboards
+# (ARCHITECTURE.md §6.5: "Metrics | Prometheus + Grafana"), not a
+# finished monitoring setup — no dashboards or Prometheus datasource are
+# wired in here, since neither is asked for by this task.
+
+apiVersion: 1
+
+datasources:
+  - name: QuantTrade Postgres (placeholder)
+    type: postgres
+    access: proxy
+    url: postgres:5432
+    database: quanttrade
+    user: quanttrade
+    isDefault: true
+    editable: true
+    jsonData:
+      sslmode: disable
+      postgresVersion: 1600
+      timescaledb: true
+    secureJsonData:
+      password: quanttrade_dev_password

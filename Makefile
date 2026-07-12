@@ -20,7 +20,7 @@ MYPY        := $(VENV_BIN)/mypy$(EXE)
 PYTEST      := $(VENV_BIN)/pytest$(EXE)
 LINT_IMPORTS := $(VENV_BIN)/lint-imports$(EXE)
 
-.PHONY: venv install lint typecheck test check clean
+.PHONY: venv install lint typecheck test check clean dev-up dev-down
 
 ## Create the virtual environment if it doesn't already exist.
 venv:
@@ -54,3 +54,12 @@ check: lint typecheck test
 ## Remove the venv and all tool caches.
 clean:
 	rm -rf $(VENV_DIR) .mypy_cache .pytest_cache .ruff_cache *.egg-info
+
+## Start the local dev infrastructure (Postgres+Timescale, Redis, Grafana,
+## a test-only Postgres) and block until every service reports healthy.
+dev-up:
+	docker compose up -d --wait
+
+## Stop the local dev infrastructure and remove its volumes — a clean slate.
+dev-down:
+	docker compose down --volumes

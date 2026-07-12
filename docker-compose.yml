@@ -1,0 +1,92 @@
+# QuantTrade Platform — local dev infrastructure.
+#
+# TASKS.md T-P0-10: "No application containers in this compose — only
+# infrastructure." The trading processes themselves (market-data-gateway,
+# trading-core, venue-gateway, ...) are not modeled here; this exists so a
+# developer can `make dev-up` and get Postgres+TimescaleDB, Redis, Grafana,
+# and an isolated test database, matching ARCHITECTURE.md Phase 0's stated
+# deliverable: "docker-compose (Postgres+Timescale, Redis, Grafana)".
+#
+# Images are pinned to specific tags, never `latest` (ARCHITECTURE.md
+# §3.11: "Immutable, hash-pinned images. No `latest` tags."). Bump these
+# deliberately, not implicitly on every pull.
+#
+# Healthcheck retry/interval budgets are deliberately tight (TASKS.md
+# T-P0-10: "make dev-up starts all containers in under 60 seconds"):
+# `grafana` waits on `postgres`'s health, so their worst-case timeouts
+# stack rather than run in parallel. Postgres/Redis ceilings (~20s/~10s)
+# plus Grafana's (~30s) still land comfortably inside the 60s budget even
+# if every service took its absolute worst case, while each ceiling is
+# still generous for these images' typical (single-digit-second) startup
+# time on already-pulled, locally cached images.
+
+services:
+  postgres:
+    image: timescale/timescaledb:2.17.2-pg16
+    environment:
+      POSTGRES_USER: quanttrade
+      POSTGRES_PASSWORD: quanttrade_dev_password
+      POSTGRES_DB: quanttrade
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init_db.sh:/docker-entrypoint-initdb.d/init_db.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U quanttrade -d quanttrade"]
+      interval: 1s
+      timeout: 3s
+      retries: 20
+
+  postgres-test:
+    image: timescale/timescaledb:2.17.2-pg16
+    environment:
+      POSTGRES_USER: quanttrade_test
+      POSTGRES_PASSWORD: quanttrade_test_password
+      POSTGRES_DB: quanttrade_test
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_test_data:/var/lib/postgresql/data
+      - ./scripts/init_db.sh:/docker-entrypoint-initdb.d/init_db.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U quanttrade_test -d quanttrade_test"]
+      interval: 1s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7.4-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 1s
+      timeout: 2s
+      retries: 10
+
+  grafana:
+    image: grafana/grafana:11.4.0
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q http://localhost:3000/api/health"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+volumes:
+  postgres_data:
+  postgres_test_data:
+  redis_data:
+  grafana_data:
