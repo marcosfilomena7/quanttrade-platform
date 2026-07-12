@@ -362,3 +362,95 @@ def test_unclassified_error_status_raises_venue_request_error() -> None:
     client = _client(handler)
     with pytest.raises(VenueRequestError, match="Invalid symbol"):
         client.get_exchange_info()
+
+
+# --- get_klines (T-P1-04) ---------------------------------------------------
+
+_RAW_KLINE = [
+    1735689600000,
+    "42000.00000000",
+    "42100.50000000",
+    "41950.25000000",
+    "42050.75000000",
+    "123.45678900",
+    1735689659999,
+    "5190000.12345678",
+    308,
+    "60.00000000",
+    "2500000.00000000",
+    "0",
+]
+
+
+def test_get_klines_is_unsigned_and_returns_typed_models_not_dicts() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/api/v3/klines"
+        assert _API_KEY_HEADER not in request.headers
+        assert "signature" not in request.url.params
+        return httpx.Response(200, json=[_RAW_KLINE])
+
+    client = _client(handler)
+    result = client.get_klines(
+        symbol="BTCUSDT",
+        interval="1m",
+        start_time=datetime(2026, 1, 1, tzinfo=UTC),
+        end_time=datetime(2026, 1, 2, tzinfo=UTC),
+    )
+
+    assert len(result) == 1
+    assert not isinstance(result[0], dict)
+    assert result[0].open == Decimal("42000.00000000")
+    assert isinstance(result[0].open, Decimal)
+
+
+def test_get_klines_sends_symbol_interval_time_range_and_limit() -> None:
+    captured: dict[str, str] = {}
+    start_time = datetime(2026, 1, 1, tzinfo=UTC)
+    end_time = datetime(2026, 1, 2, tzinfo=UTC)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured.update(dict(request.url.params))
+        return httpx.Response(200, json=[_RAW_KLINE])
+
+    client = _client(handler)
+    client.get_klines(
+        symbol="BTCUSDT", interval="1m", start_time=start_time, end_time=end_time, limit=500
+    )
+
+    assert captured["symbol"] == "BTCUSDT"
+    assert captured["interval"] == "1m"
+    assert captured["startTime"] == str(int(start_time.timestamp() * 1000))
+    assert captured["endTime"] == str(int(end_time.timestamp() * 1000))
+    assert captured["limit"] == "500"
+
+
+def test_get_klines_defaults_limit_to_1000() -> None:
+    captured: dict[str, str] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured.update(dict(request.url.params))
+        return httpx.Response(200, json=[])
+
+    client = _client(handler)
+    client.get_klines(
+        symbol="BTCUSDT",
+        interval="1m",
+        start_time=datetime(2026, 1, 1, tzinfo=UTC),
+        end_time=datetime(2026, 1, 2, tzinfo=UTC),
+    )
+
+    assert captured["limit"] == "1000"
+
+
+def test_get_klines_returns_empty_list_when_no_bars_available() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=[])
+
+    client = _client(handler)
+    result = client.get_klines(
+        symbol="BTCUSDT",
+        interval="1m",
+        start_time=datetime(2026, 1, 1, tzinfo=UTC),
+        end_time=datetime(2026, 1, 2, tzinfo=UTC),
+    )
+    assert result == []

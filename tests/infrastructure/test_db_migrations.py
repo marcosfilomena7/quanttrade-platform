@@ -238,6 +238,9 @@ def _insert_order(
 def test_alembic_upgrade_head_runs_against_a_clean_database_with_zero_errors(
     db_engine: sa.Engine,
 ) -> None:
+    """25 tables as of T-P1-04: T-P0-11's 24 (23 DATABASE.md entities +
+    trade_tick) plus candle_backfill_checkpoint (see
+    infrastructure/db/tables/backfill.py's docstring)."""
     with db_engine.connect() as conn:
         table_count = conn.execute(
             text(
@@ -245,7 +248,7 @@ def test_alembic_upgrade_head_runs_against_a_clean_database_with_zero_errors(
                 "WHERE table_schema = 'public' AND table_name != 'alembic_version'"
             )
         ).scalar_one()
-    assert table_count == 24
+    assert table_count == 25
 
 
 def test_order_venue_id_client_order_id_unique_violation(db_engine: sa.Engine) -> None:
@@ -359,12 +362,23 @@ def test_alembic_downgrade_reverses_cleanly(db_engine: sa.Engine) -> None:
     documented default is to collect and run tests in source order within
     a file, and this one drops every table the shared, module-scoped
     `db_engine` fixture provides — every test above depends on that
-    schema already existing. Restores it afterward as a safety net."""
+    schema already existing. Restores it afterward as a safety net.
+
+    Downgrades to `"base"`, not `"-1"`: T-P0-11's original acceptance
+    criterion ("`alembic downgrade -1` reverses cleanly") was written
+    when there was exactly one migration, so `-1` meant "all the way to
+    zero tables." T-P1-04 added a second migration
+    (`candle_backfill_checkpoint`), after which `-1` from `head` only
+    steps back to the *baseline* revision (24 tables remaining), not to
+    an empty database. `"base"` expresses the same original intent — a
+    full, clean teardown of the entire migration chain — in a way that
+    keeps meaning the same thing regardless of how many migrations exist.
+    """
     config = Config(str(REPO_ROOT / "alembic.ini"))
     config.set_main_option("script_location", str(REPO_ROOT / "alembic"))
     config.set_main_option("sqlalchemy.url", str(db_engine.url))
 
-    command.downgrade(config, "-1")
+    command.downgrade(config, "base")
 
     with db_engine.connect() as conn:
         table_count = conn.execute(

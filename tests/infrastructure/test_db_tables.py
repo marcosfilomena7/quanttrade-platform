@@ -19,9 +19,11 @@ def _table(name: str) -> sa.Table:
     return metadata.tables[name]
 
 
-def test_exactly_24_tables_are_registered() -> None:
-    """23 DATABASE.md entities + trade_tick (see market_data.py's docstring)."""
-    assert len(metadata.tables) == 24
+def test_exactly_25_tables_are_registered() -> None:
+    """23 DATABASE.md entities + trade_tick (T-P0-11, see market_data.py's
+    docstring) + candle_backfill_checkpoint (T-P1-04, see backfill.py's
+    docstring)."""
+    assert len(metadata.tables) == 25
 
 
 def test_risk_limit_config_is_permanently_excluded() -> None:
@@ -32,7 +34,7 @@ def test_risk_limit_config_is_permanently_excluded() -> None:
     assert "risklimitconfig" not in names
 
 
-def test_all_23_database_md_entities_plus_trade_tick_are_present() -> None:
+def test_all_23_database_md_entities_plus_trade_tick_and_checkpoint_are_present() -> None:
     expected = {
         "venue",
         "instrument",
@@ -58,6 +60,7 @@ def test_all_23_database_md_entities_plus_trade_tick_are_present() -> None:
         "backtest_run",
         "backtest_trade",
         "backtest_metrics",
+        "candle_backfill_checkpoint",
     }
     assert set(metadata.tables.keys()) == expected
 
@@ -110,3 +113,11 @@ def test_equity_snapshot_primary_key_includes_its_hypertable_partition_column() 
     equity_snapshot = _table("equity_snapshot")
     pk_columns = {col.name for col in equity_snapshot.primary_key.columns}
     assert pk_columns == {"id", "ts"}
+
+
+def test_candle_backfill_checkpoint_primary_key_is_its_natural_request_key() -> None:
+    """T-P1-04: one checkpoint row per distinct backfill request — see
+    backfill.py's module docstring."""
+    checkpoint = _table("candle_backfill_checkpoint")
+    pk_columns = {col.name for col in checkpoint.primary_key.columns}
+    assert pk_columns == {"venue_id", "instrument_id", "interval", "range_start", "range_end"}

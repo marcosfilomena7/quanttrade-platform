@@ -25,6 +25,8 @@ by the Python attribute name.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+from datetime import UTC, datetime
 from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -101,3 +103,53 @@ class AccountResponse(BaseModel):
     update_time: int = Field(alias="updateTime")
     account_type: str = Field(alias="accountType")
     balances: list[AccountBalance] = Field(default_factory=list)
+
+
+class Kline(BaseModel):
+    """One OHLCV bar from `GET /api/v3/klines` (TASKS.md T-P1-04).
+
+    Binance returns klines as a bare JSON array of 12 positional
+    elements, not a JSON object with named keys — there is nothing for
+    Pydantic's usual dict-based `model_validate` to key off of. `from_raw`
+    is what gives each bar a typed, named shape; only the fields this
+    repo's `candle` table (T-P0-11) actually stores are kept — the raw
+    array's `close_time`, `quote_asset_volume`, taker-buy fields, and the
+    trailing "ignore" element are read (to preserve array position) but
+    discarded, not modeled.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    open_time: datetime
+    open: Decimal
+    high: Decimal
+    low: Decimal
+    close: Decimal
+    volume: Decimal
+    trade_count: int
+
+    @classmethod
+    def from_raw(cls, raw: Sequence[object]) -> Kline:
+        (
+            open_time_ms,
+            open_,
+            high,
+            low,
+            close,
+            volume,
+            _close_time_ms,
+            _quote_asset_volume,
+            trade_count,
+            _taker_buy_base_asset_volume,
+            _taker_buy_quote_asset_volume,
+            _ignore,
+        ) = raw
+        return cls(
+            open_time=datetime.fromtimestamp(int(str(open_time_ms)) / 1000, tz=UTC),
+            open=Decimal(str(open_)),
+            high=Decimal(str(high)),
+            low=Decimal(str(low)),
+            close=Decimal(str(close)),
+            volume=Decimal(str(volume)),
+            trade_count=int(str(trade_count)),
+        )

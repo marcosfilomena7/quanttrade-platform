@@ -42,6 +42,12 @@ Design decisions, and why:
   for `httpx` to re-serialize — avoiding any risk that `httpx`'s own
   encoding differs byte-for-byte from what was signed, which would
   produce a signature Binance rejects.
+- **Unsigned requests can carry query parameters too (T-P1-04).**
+  `get_exchange_info()`/`get_account()` (T-P1-01) never needed a
+  `params` argument, but `get_klines()` (a public, unsigned endpoint)
+  does — `_build_url`/`_request` grew an optional `params` dict rather
+  than gaining a second, parallel code path, so signed and unsigned
+  requests share one query-building/signing implementation.
 """
 
 from __future__ import annotations
@@ -62,7 +68,7 @@ from infrastructure.venues.binance.errors import (
     VenueServerError,
     VenueTimestampError,
 )
-from infrastructure.venues.binance.models import AccountResponse, ExchangeInfoResponse
+from infrastructure.venues.binance.models import AccountResponse, ExchangeInfoResponse, Kline
 from infrastructure.venues.binance.rate_limiter import RateLimitTracker
 
 _TIMESTAMP_ERROR_CODE = -1021
@@ -113,12 +119,41 @@ class BinanceRestClient:
         response = self._request("GET", "/api/v3/account", signed=True)
         return AccountResponse.model_validate(response.json())
 
+    def get_klines(
+        self,
+        *,
+        symbol: str,
+        interval: str,
+        start_time: datetime,
+        end_time: datetime,
+        limit: int = 1000,
+    ) -> list[Kline]:
+        """`GET /api/v3/klines` — public, unsigned. Up to `limit` (Binance's
+        own maximum is 1000) OHLCV bars for `symbol`/`interval` within
+        `[start_time, end_time]`, oldest first."""
+        params: dict[str, object] = {
+            "symbol": symbol,
+            "interval": interval,
+            "startTime": int(start_time.timestamp() * 1000),
+            "endTime": int(end_time.timestamp() * 1000),
+            "limit": limit,
+        }
+        response = self._request("GET", "/api/v3/klines", params=params, signed=False)
+        return [Kline.from_raw(raw) for raw in response.json()]
+
     # --- Request plumbing ---------------------------------------------------
 
-    def _request(self, method: str, path: str, *, signed: bool) -> httpx.Response:
+    def _request(
+        self,
+        method: str,
+        path: str,
+        *,
+        params: dict[str, object] | None = None,
+        signed: bool,
+    ) -> httpx.Response:
         now = self._now()
         self._raise_if_in_backoff(now)
-        url = self._build_url(path, now, signed=signed)
+        url = self._build_url(path, now, params=params, signed=signed)
         headers = {_API_KEY_HEADER: self._api_key} if signed else {}
 
         attempt = 0
@@ -157,11 +192,22 @@ class BinanceRestClient:
                 f"{self._error_message(response)}"
             )
 
-    def _build_url(self, path: str, now: datetime, *, signed: bool) -> str:
-        if not signed:
-            return path
+    def _build_url(
+        self,
+        path: str,
+        now: datetime,
+        *,
+        params: dict[str, object] | None = None,
+        signed: bool,
+    ) -> str:
+        query: dict[str, object] = dict(params or {})
 
-        query = {"timestamp": int(now.timestamp() * 1000), "recvWindow": self._recv_window_ms}
+        if not signed:
+            query_string = urlencode(query)
+            return f"{path}?{query_string}" if query_string else path
+
+        query["timestamp"] = int(now.timestamp() * 1000)
+        query["recvWindow"] = self._recv_window_ms
         query_string = urlencode(query)
         signature = self._sign(query_string)
         return f"{path}?{query_string}&signature={signature}"

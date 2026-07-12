@@ -8,12 +8,13 @@ resulting Python values are `Decimal`, never `float`.
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from decimal import Decimal
 
 import pydantic
 import pytest
 
-from infrastructure.venues.binance.models import AccountResponse, ExchangeInfoResponse
+from infrastructure.venues.binance.models import AccountResponse, ExchangeInfoResponse, Kline
 
 _EXCHANGE_INFO_BODY = {
     "timezone": "UTC",
@@ -127,3 +128,50 @@ def test_models_are_frozen() -> None:
     parsed = AccountResponse.model_validate(_ACCOUNT_BODY)
     with pytest.raises(pydantic.ValidationError):
         parsed.can_trade = False  # type: ignore[misc]
+
+
+# --- Kline (T-P1-04) --------------------------------------------------------
+
+_RAW_KLINE = [
+    1735689600000,
+    "42000.00000000",
+    "42100.50000000",
+    "41950.25000000",
+    "42050.75000000",
+    "123.45678900",
+    1735689659999,
+    "5190000.12345678",
+    308,
+    "60.00000000",
+    "2500000.00000000",
+    "0",
+]
+
+
+def test_kline_from_raw_parses_ohlcv_fields_as_decimal() -> None:
+    kline = Kline.from_raw(_RAW_KLINE)
+    assert kline.open == Decimal("42000.00000000")
+    assert kline.high == Decimal("42100.50000000")
+    assert kline.low == Decimal("41950.25000000")
+    assert kline.close == Decimal("42050.75000000")
+    assert kline.volume == Decimal("123.45678900")
+    for value in (kline.open, kline.high, kline.low, kline.close, kline.volume):
+        assert isinstance(value, Decimal)
+        assert not isinstance(value, float)
+
+
+def test_kline_from_raw_parses_open_time_from_epoch_milliseconds() -> None:
+    kline = Kline.from_raw(_RAW_KLINE)
+    assert kline.open_time == datetime(2025, 1, 1, tzinfo=UTC)
+
+
+def test_kline_from_raw_parses_trade_count_as_int() -> None:
+    kline = Kline.from_raw(_RAW_KLINE)
+    assert kline.trade_count == 308
+    assert isinstance(kline.trade_count, int)
+
+
+def test_kline_is_frozen() -> None:
+    kline = Kline.from_raw(_RAW_KLINE)
+    with pytest.raises(pydantic.ValidationError):
+        kline.close = Decimal("1")  # type: ignore[misc]
