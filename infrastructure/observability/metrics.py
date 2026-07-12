@@ -58,3 +58,18 @@ data_staleness_seconds = Histogram(
     ["symbol"],
     registry=REGISTRY,
 )
+
+# TASKS.md T-P1-02: "A simulated tick-size change logs a warning and
+# emits a `reference_data_changed` metric" — the acceptance criterion
+# names this metric literally as `reference_data_changed`, without the
+# `_total` suffix every other counter above uses; the literal name in
+# the acceptance criterion takes precedence over this file's own
+# otherwise-consistent naming convention.
+reference_data_changed = Counter(
+    "reference_data_changed",
+    "Total number of reference-data field changes detected for an "
+    "already-known instrument (e.g. a silent tick-size or lot-size "
+    "change), by venue, symbol, and field.",
+    ["venue", "symbol", "field"],
+    registry=REGISTRY,
+)

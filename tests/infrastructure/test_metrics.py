@@ -93,6 +93,33 @@ def test_fill_processing_seconds_observes_a_duration() -> None:
     assert round(after_sum - before_sum, 3) == 0.042
 
 
+def test_reference_data_changed_metric_is_defined() -> None:
+    """TASKS.md T-P1-02: "A simulated tick-size change logs a warning and
+    emits a `reference_data_changed` metric.\""""
+    assert isinstance(m.reference_data_changed, Counter)
+
+
+def test_reference_data_changed_is_scrapeable_by_name() -> None:
+    """`prometheus_client` exposes a `Counter` with the OpenMetrics `_total`
+    suffix appended at scrape time when the declared name doesn't already
+    end with it — the metric is still named `reference_data_changed` at
+    the Python level (`m.reference_data_changed`), matching the
+    acceptance criterion's literal name."""
+    text = _scrape()
+    assert "# TYPE reference_data_changed_total counter" in text
+
+
+def test_reference_data_changed_increments_per_venue_symbol_field() -> None:
+    m.reference_data_changed.labels(
+        venue="binance_test_only", symbol="BTCUSDT_TEST_ONLY", field="tick_size"
+    ).inc()
+    text = _scrape()
+    assert (
+        'reference_data_changed_total{field="tick_size",symbol="BTCUSDT_TEST_ONLY",'
+        'venue="binance_test_only"} 1.0' in text
+    )
+
+
 def test_data_staleness_seconds_accepts_a_new_symbol_without_pre_declaration() -> None:
     """TASKS.md T-P0-08: "`data_staleness_seconds` can be updated per symbol
     without a metric per symbol being pre-declared." A brand-new label
