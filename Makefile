@@ -33,12 +33,14 @@ install: venv
 
 ## Static analysis: style/correctness (ruff) + architectural layering (import-linter)
 ## + the float ban on domain/ and application/ (ARCHITECTURE.md §3.5) + the
-## os.environ secrets ban outside infrastructure/secrets/ (ARCHITECTURE.md §3.6).
+## os.environ secrets ban outside infrastructure/secrets/ (ARCHITECTURE.md §3.6) + the
+## wall-clock ban inside Strategy subclasses (ARCHITECTURE.md §4.7 / TASKS.md T-P2-07).
 lint:
 	$(RUFF) check .
 	$(LINT_IMPORTS)
 	$(PYTHON) scripts/check_no_float.py domain application
 	$(PYTHON) scripts/check_no_env_secrets.py domain application infrastructure
+	$(PYTHON) scripts/check_no_wall_clock_in_strategy.py domain application infrastructure
 
 ## Strict static typing on domain/ and application/ (see pyproject.toml).
 typecheck:
