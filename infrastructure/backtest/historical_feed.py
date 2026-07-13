@@ -175,6 +175,26 @@ class HistoricalFeed:
             await handler(candle)
         return candle
 
+    async def next_closed_event(self) -> tuple[Candle, datetime] | None:
+        """Like `next_event()`, but (a) returns `None` on exhaustion
+        instead of raising `FeedExhausted`, and (b) returns the candle's
+        own close time (`open_time + interval step`) alongside it. This
+        is the exact shape TASKS.md T-P2-04's application-layer backtest
+        loop needs to advance a `Clock`/`MarketDataView` correctly — a
+        plain return value rather than an exception, and no need for
+        that layer to import this module's `FeedExhausted` or re-derive
+        interval step sizes itself, which would require an
+        `application/` → `infrastructure/` import the Dependency Rule
+        forbids. Delegates to `next_event()` unchanged; does not alter
+        its behavior or its own `FeedExhausted`-raising contract.
+        """
+        try:
+            candle = await self.next_event()
+        except FeedExhausted:
+            return None
+        step = interval_to_timedelta(candle.interval)
+        return candle, candle.open_time + step
+
 
 def load_candle_series_from_dataset_version(
     conn: sa.Connection,
