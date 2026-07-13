@@ -19,6 +19,7 @@ dependencies = [
     "alembic>=1.13,<2",
     "psycopg[binary]>=3,<4",
     "websockets>=13,<14",
+    "pyarrow>=17,<26",
 ]
 
 [project.optional-dependencies]

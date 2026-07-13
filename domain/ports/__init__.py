@@ -24,12 +24,14 @@ practically satisfiable live in `tests/domain/test_ports.py`.
 """
 
 from domain.ports.clock import Clock
+from domain.ports.dataset_version_repository import DatasetVersionRepository
 from domain.ports.event_bus import EventBus
 from domain.ports.market_data import MarketDataFeed, MarketDataView
 from domain.ports.venue import VenuePort
 
 __all__ = [
     "Clock",
+    "DatasetVersionRepository",
     "EventBus",
     "MarketDataFeed",
     "MarketDataView",

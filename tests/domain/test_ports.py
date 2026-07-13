@@ -21,15 +21,23 @@ from __future__ import annotations
 import ast
 import asyncio
 from collections.abc import Awaitable, Callable, Mapping, Sequence
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from pathlib import Path
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from domain.candle import Candle
+from domain.dataset_version import DatasetVersion
 from domain.fill import Fill
 from domain.order import Order, OrderSide, OrderType, TimeInForce
-from domain.ports import Clock, EventBus, MarketDataFeed, MarketDataView, VenuePort
+from domain.ports import (
+    Clock,
+    DatasetVersionRepository,
+    EventBus,
+    MarketDataFeed,
+    MarketDataView,
+    VenuePort,
+)
 from domain.position import Position
 
 TS = datetime(2026, 1, 1, tzinfo=UTC)
@@ -97,6 +105,14 @@ class StubVenuePort:
         return frozenset({"post_only", "reduce_only"})
 
 
+class StubDatasetVersionRepository:
+    def __init__(self, record: DatasetVersion | None) -> None:
+        self._record = record
+
+    def get(self, dataset_version_id: UUID) -> DatasetVersion | None:
+        return self._record
+
+
 # --- Static type-check proof --------------------------------------------
 # Verified separately with: .venv/Scripts/mypy.exe tests/domain/test_ports.py
 # If a stub's shape ever drifts from its port, that command fails here.
@@ -106,6 +122,7 @@ _event_bus_typed: EventBus = StubEventBus()
 _market_data_feed_typed: MarketDataFeed = StubMarketDataFeed()
 _market_data_view_typed: MarketDataView = StubMarketDataView()
 _venue_typed: VenuePort = StubVenuePort()
+_dataset_version_repository_typed: DatasetVersionRepository = StubDatasetVersionRepository(None)
 
 
 # --- Runtime isinstance() checks (continuously verified by `make test`) ----
@@ -129,6 +146,10 @@ def test_stub_market_data_view_satisfies_protocol_at_runtime() -> None:
 
 def test_stub_venue_port_satisfies_protocol_at_runtime() -> None:
     assert isinstance(StubVenuePort(), VenuePort)
+
+
+def test_stub_dataset_version_repository_satisfies_protocol_at_runtime() -> None:
+    assert isinstance(StubDatasetVersionRepository(None), DatasetVersionRepository)
 
 
 # --- Behavioral sanity: the stubs actually run -------------------------------
@@ -208,17 +229,36 @@ def test_venue_port_submit_cancel_and_queries_are_awaitable() -> None:
     asyncio.run(run())
 
 
+def test_dataset_version_repository_get_returns_the_stored_record() -> None:
+    record = DatasetVersion(
+        id=uuid4(),
+        content_hash="abc123",
+        symbol_set=(uuid4(),),
+        date_range_start=date(2026, 1, 1),
+        date_range_end=date(2026, 1, 31),
+        created_at=TS,
+    )
+    repo = StubDatasetVersionRepository(record)
+    assert repo.get(record.id) == record
+
+
+def test_dataset_version_repository_get_returns_none_when_absent() -> None:
+    assert StubDatasetVersionRepository(None).get(uuid4()) is None
+
+
 # --- All ports importable from domain/ports/ with no infrastructure imports -
 
 
-def test_all_five_ports_are_importable_from_domain_ports_package() -> None:
+def test_all_six_ports_are_importable_from_domain_ports_package() -> None:
     from domain.ports import Clock as ImportedClock
+    from domain.ports import DatasetVersionRepository as ImportedDatasetVersionRepository
     from domain.ports import EventBus as ImportedEventBus
     from domain.ports import MarketDataFeed as ImportedMarketDataFeed
     from domain.ports import MarketDataView as ImportedMarketDataView
     from domain.ports import VenuePort as ImportedVenuePort
 
     assert ImportedClock is Clock
+    assert ImportedDatasetVersionRepository is DatasetVersionRepository
     assert ImportedEventBus is EventBus
     assert ImportedMarketDataFeed is MarketDataFeed
     assert ImportedMarketDataView is MarketDataView
