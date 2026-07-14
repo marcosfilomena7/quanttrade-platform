@@ -377,7 +377,10 @@ def test_alembic_downgrade_reverses_cleanly(db_engine: sa.Engine) -> None:
     """
     config = Config(str(REPO_ROOT / "alembic.ini"))
     config.set_main_option("script_location", str(REPO_ROOT / "alembic"))
-    config.set_main_option("sqlalchemy.url", str(db_engine.url))
+    # `str(db_engine.url)` masks the password (SQLAlchemy's default,
+    # security-conscious `URL.__str__`) — `render_as_string(hide_password
+    # =False)` is the correct way to recover the real, connectable URL.
+    config.set_main_option("sqlalchemy.url", db_engine.url.render_as_string(hide_password=False))
 
     command.downgrade(config, "base")
 

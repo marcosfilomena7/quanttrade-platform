@@ -115,16 +115,43 @@ def db_engine() -> Iterator[sa.Engine]:
     container.stop()
 
 
+def _truncate_all_tables(conn: sa.Connection) -> None:
+    """Some job functions under test commit their own writes internally
+    (legitimate production behavior), so a plain `connection.rollback()`
+    cannot undo them. Truncating every table (except `alembic_version`)
+    after each test is what actually gives each test a clean slate,
+    regardless of what the code under test committed."""
+    tables = conn.execute(
+        text(
+            "SELECT tablename FROM pg_tables WHERE schemaname = 'public' "
+            "AND tablename != 'alembic_version'"
+        )
+    ).scalars().all()
+    if tables:
+        quoted = ", ".join(f'"{name}"' for name in tables)
+        conn.execute(text(f"TRUNCATE TABLE {quoted} RESTART IDENTITY CASCADE"))
+        conn.commit()
+
+
 @pytest.fixture
 def conn(db_engine: sa.Engine) -> Iterator[sa.Connection]:
-    """One connection per test, with its own transaction rolled back at the
-    end so tests don't leak instrument/venue rows into each other."""
+    """One connection per test. Rolls back any uncommitted work first,
+    then truncates every table — see `_truncate_all_tables` for why a
+    rollback alone isn't sufficient here."""
     with db_engine.connect() as connection:
         yield connection
         connection.rollback()
+        _truncate_all_tables(connection)
 
 
-def _insert_venue(conn: sa.Connection, *, name: str = "binance") -> uuid.UUID:
+def _insert_venue(conn: sa.Connection, *, name: str | None = None) -> uuid.UUID:
+    """`name` defaults to a fresh, per-call unique value: `venue.name`
+    has a UNIQUE constraint, and some job functions under test commit
+    their own writes internally, so a fixed literal like `"binance"`
+    would collide across tests within the same container. The
+    `venue="binance"` argument to `_sample_reference_data_changed` is a
+    Prometheus metric label the production code emits verbatim,
+    independent of this row's own `name` column."""
     venue_id = uuid.uuid4()
     conn.execute(
         text(
@@ -132,7 +159,7 @@ def _insert_venue(conn: sa.Connection, *, name: str = "binance") -> uuid.UUID:
             "fee_schedule, status) VALUES (:id, :name, 'cex', 'https://api.binance.com', "
             "'{}', '{}', 'active')"
         ),
-        {"id": venue_id, "name": name},
+        {"id": venue_id, "name": name if name is not None else f"binance-{venue_id}"},
     )
     return venue_id
 
