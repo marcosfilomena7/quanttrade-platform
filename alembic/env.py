@@ -5,6 +5,16 @@ rather than a hardcoded value in `alembic.ini` — falls back to the local
 dev Postgres from `docker-compose.yml` (T-P0-10) so `alembic upgrade head`
 works out of the box after `make dev-up`, with no extra configuration.
 
+That `DATABASE_URL`/default fallback only applies if `sqlalchemy.url`
+isn't already set on the `Config` object. Callers that run migrations
+programmatically against their own database — every integration test's
+`db_engine` fixture, which points an ephemeral, per-test TimescaleDB
+container by calling `config.set_main_option("sqlalchemy.url", ...)`
+before invoking `command.upgrade(...)` — must have that value preserved
+here, not silently overwritten back to the local dev Postgres default.
+`alembic.ini`'s own `sqlalchemy.url` is left commented out precisely so
+this module is the one place resolving it, for either caller.
+
 `target_metadata` is `infrastructure.db.tables.metadata` — the single
 shared `MetaData` every table in that package registers onto (see
 `infrastructure/db/tables/_metadata.py`).
@@ -28,7 +38,8 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 _DEFAULT_DATABASE_URL = "postgresql+psycopg://quanttrade:quanttrade_dev_password@localhost:5432/quanttrade"
-config.set_main_option("sqlalchemy.url", os.environ.get("DATABASE_URL", _DEFAULT_DATABASE_URL))
+if not config.get_main_option("sqlalchemy.url"):
+    config.set_main_option("sqlalchemy.url", os.environ.get("DATABASE_URL", _DEFAULT_DATABASE_URL))
 
 
 def run_migrations_offline() -> None:

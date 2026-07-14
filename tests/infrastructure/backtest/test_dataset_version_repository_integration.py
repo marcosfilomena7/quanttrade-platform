@@ -131,7 +131,6 @@ def _insert_strategy(conn: sa.Connection) -> uuid.UUID:
         ),
         {"id": strategy_id, "name": f"strategy-{strategy_id}", "code_hash": "abc123"},
     )
-    conn.commit()
     return strategy_id
 
 
@@ -240,7 +239,6 @@ def test_a_backtest_run_storing_dataset_version_id_can_later_retrieve_the_same_v
             "operator": "test-operator",
         },
     )
-    conn.commit()
 
     stored_dataset_version_id = conn.execute(
         sa.select(backtest_run.c.dataset_version_id).where(backtest_run.c.id == run_id)

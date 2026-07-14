@@ -130,7 +130,6 @@ def _insert_venue(conn: sa.Connection, *, name: str = "binance") -> uuid.UUID:
         ),
         {"id": venue_id, "name": name},
     )
-    conn.commit()
     return venue_id
 
 
@@ -151,7 +150,6 @@ def _insert_instrument(
         ),
         {"id": instrument_id, "venue_id": venue_id, "symbol": symbol, "status": status},
     )
-    conn.commit()
     return instrument_id
 
 
@@ -160,7 +158,6 @@ def _set_instrument_status(conn: sa.Connection, instrument_id: uuid.UUID, status
         text("UPDATE instrument SET status = :status, updated_at = now() WHERE id = :id"),
         {"status": status, "id": instrument_id},
     )
-    conn.commit()
 
 
 def test_capture_inserts_one_row_per_instrument_for_the_venue(conn: sa.Connection) -> None:

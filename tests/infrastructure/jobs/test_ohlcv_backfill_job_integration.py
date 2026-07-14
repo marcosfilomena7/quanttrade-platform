@@ -135,7 +135,6 @@ def _insert_venue(conn: sa.Connection, *, name: str = "binance") -> uuid.UUID:
         ),
         {"id": venue_id, "name": name},
     )
-    conn.commit()
     return venue_id
 
 
@@ -150,7 +149,6 @@ def _insert_instrument(conn: sa.Connection, *, venue_id: uuid.UUID, symbol: str)
         ),
         {"id": instrument_id, "venue_id": venue_id, "symbol": symbol},
     )
-    conn.commit()
     return instrument_id
 
 

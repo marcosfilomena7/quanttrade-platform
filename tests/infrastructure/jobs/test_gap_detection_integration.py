@@ -136,7 +136,6 @@ def _insert_venue(conn: sa.Connection, *, name: str = "binance") -> uuid.UUID:
         ),
         {"id": venue_id, "name": name},
     )
-    conn.commit()
     return venue_id
 
 
@@ -151,7 +150,6 @@ def _insert_instrument(conn: sa.Connection, *, venue_id: uuid.UUID, symbol: str)
         ),
         {"id": instrument_id, "venue_id": venue_id, "symbol": symbol},
     )
-    conn.commit()
     return instrument_id
 
 
@@ -173,7 +171,6 @@ def _fill_clean_candles(
             {"id": instrument_id, "ot": t},
         )
         t += timedelta(minutes=1)
-    conn.commit()
 
 
 def _delete_candles_at(
@@ -186,7 +183,6 @@ def _delete_candles_at(
         ),
         {"id": instrument_id, "open_times": open_times},
     )
-    conn.commit()
 
 
 def _rest_client(handler: httpx.MockTransport | None = None) -> BinanceRestClient:

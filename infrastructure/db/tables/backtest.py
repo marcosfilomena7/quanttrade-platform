@@ -9,6 +9,17 @@ at run end." A run is necessarily inserted (with `started_at`) before it
 can possibly have a `finished_at`, and a trade with no `exit_ts` has no
 `exit_price` either — the same "still open" reasoning DATABASE.md already
 gives for `exit_ts` applies identically to its paired columns.
+
+`BacktestMetrics`'s `cagr`, `volatility`, `sharpe`, `sortino`, `calmar`,
+`deflated_sharpe`, `probabilistic_sharpe`, `win_rate`, `profit_factor`,
+`avg_trade_pnl`, `turnover`, and `fees_pct_of_gross` are nullable as of
+TASKS.md T-P2-12 (see `alembic/versions/e1fdbf4f07ed_*.py`'s own
+docstring for the full rationale): `application/backtest/metrics.py`'s
+`Tearsheet` (T-P2-11) deliberately returns `None` for several of these
+in ordinary, valid scenarios (e.g. zero closed trades), and
+`deflated_sharpe`/`probabilistic_sharpe`/`volatility`/`turnover` have no
+computation anywhere in this codebase yet. `total_return`,
+`max_drawdown`, and `trial_count_at_time_of_run` stay `NOT NULL`.
 """
 
 from __future__ import annotations
@@ -92,18 +103,18 @@ backtest_metrics = sa.Table(
         primary_key=True,
     ),
     sa.Column("total_return", sa.Numeric, nullable=False),
-    sa.Column("cagr", sa.Numeric, nullable=False),
-    sa.Column("volatility", sa.Numeric, nullable=False),
+    sa.Column("cagr", sa.Numeric, nullable=True),
+    sa.Column("volatility", sa.Numeric, nullable=True),
     sa.Column("max_drawdown", sa.Numeric, nullable=False),
-    sa.Column("sharpe", sa.Numeric, nullable=False),
-    sa.Column("sortino", sa.Numeric, nullable=False),
-    sa.Column("calmar", sa.Numeric, nullable=False),
-    sa.Column("deflated_sharpe", sa.Numeric, nullable=False),
-    sa.Column("probabilistic_sharpe", sa.Numeric, nullable=False),
-    sa.Column("win_rate", sa.Numeric, nullable=False),
-    sa.Column("profit_factor", sa.Numeric, nullable=False),
-    sa.Column("avg_trade_pnl", sa.Numeric, nullable=False),
-    sa.Column("turnover", sa.Numeric, nullable=False),
-    sa.Column("fees_pct_of_gross", sa.Numeric, nullable=False),
+    sa.Column("sharpe", sa.Numeric, nullable=True),
+    sa.Column("sortino", sa.Numeric, nullable=True),
+    sa.Column("calmar", sa.Numeric, nullable=True),
+    sa.Column("deflated_sharpe", sa.Numeric, nullable=True),
+    sa.Column("probabilistic_sharpe", sa.Numeric, nullable=True),
+    sa.Column("win_rate", sa.Numeric, nullable=True),
+    sa.Column("profit_factor", sa.Numeric, nullable=True),
+    sa.Column("avg_trade_pnl", sa.Numeric, nullable=True),
+    sa.Column("turnover", sa.Numeric, nullable=True),
+    sa.Column("fees_pct_of_gross", sa.Numeric, nullable=True),
     sa.Column("trial_count_at_time_of_run", sa.Integer, nullable=False),
 )

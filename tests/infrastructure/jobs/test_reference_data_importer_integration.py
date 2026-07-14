@@ -134,7 +134,6 @@ def _insert_venue(conn: sa.Connection, *, name: str = "binance") -> uuid.UUID:
         ),
         {"id": venue_id, "name": name},
     )
-    conn.commit()
     return venue_id
 
 
