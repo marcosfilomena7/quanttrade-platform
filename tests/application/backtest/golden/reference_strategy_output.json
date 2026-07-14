@@ -1,0 +1,138 @@
+{
+  "signals": [
+    {
+      "side": "sell",
+      "bar_index": 8
+    },
+    {
+      "side": "buy",
+      "bar_index": 16
+    },
+    {
+      "side": "sell",
+      "bar_index": 24
+    },
+    {
+      "side": "buy",
+      "bar_index": 32
+    },
+    {
+      "side": "sell",
+      "bar_index": 40
+    },
+    {
+      "side": "buy",
+      "bar_index": 48
+    },
+    {
+      "side": "sell",
+      "bar_index": 56
+    }
+  ],
+  "fills": [
+    {
+      "id": "16529c15-0b2b-51e8-a5c9-d345aab513f8",
+      "order_id": "383763fe-54f7-5a1e-b1a2-d4fd58e52605",
+      "venue_fill_id": "determinism-fill-0",
+      "side": "sell",
+      "qty": "1",
+      "price": "96",
+      "fee_amount": "0.096",
+      "fee_currency": "USDT",
+      "ts": "2026-01-01T00:09:00+00:00",
+      "is_maker": false
+    },
+    {
+      "id": "d339073b-2a36-5a67-9522-8d38f08e23a0",
+      "order_id": "fb794d05-945d-51d1-92aa-85e303e3a558",
+      "venue_fill_id": "determinism-fill-1",
+      "side": "buy",
+      "qty": "1",
+      "price": "104",
+      "fee_amount": "0.104",
+      "fee_currency": "USDT",
+      "ts": "2026-01-01T00:17:00+00:00",
+      "is_maker": false
+    },
+    {
+      "id": "a3fa2554-b832-5940-ab99-7c9ed9aaa149",
+      "order_id": "86784651-3f8a-52ee-8299-1f46d6b758fb",
+      "venue_fill_id": "determinism-fill-2",
+      "side": "sell",
+      "qty": "1",
+      "price": "96",
+      "fee_amount": "0.096",
+      "fee_currency": "USDT",
+      "ts": "2026-01-01T00:25:00+00:00",
+      "is_maker": false
+    },
+    {
+      "id": "e6cce68f-d85c-568b-a095-4e0b6f41a900",
+      "order_id": "339b6a00-361f-5371-8678-8962bb7b3b34",
+      "venue_fill_id": "determinism-fill-3",
+      "side": "buy",
+      "qty": "1",
+      "price": "104",
+      "fee_amount": "0.104",
+      "fee_currency": "USDT",
+      "ts": "2026-01-01T00:33:00+00:00",
+      "is_maker": false
+    },
+    {
+      "id": "7de91440-fc87-50f8-a70b-73281fe97b25",
+      "order_id": "4b2c7f6c-3cd2-5fff-b164-db52ad7943f5",
+      "venue_fill_id": "determinism-fill-4",
+      "side": "sell",
+      "qty": "1",
+      "price": "96",
+      "fee_amount": "0.096",
+      "fee_currency": "USDT",
+      "ts": "2026-01-01T00:41:00+00:00",
+      "is_maker": false
+    },
+    {
+      "id": "c8c8f3bc-dadd-508b-9753-f7f7b136eae0",
+      "order_id": "7da22916-df43-5d61-ba42-8a62f9a639dc",
+      "venue_fill_id": "determinism-fill-5",
+      "side": "buy",
+      "qty": "1",
+      "price": "104",
+      "fee_amount": "0.104",
+      "fee_currency": "USDT",
+      "ts": "2026-01-01T00:49:00+00:00",
+      "is_maker": false
+    },
+    {
+      "id": "be0de1ef-d4a2-55ab-bca4-0c71177bae08",
+      "order_id": "47f7eb8d-be57-55b8-9ed9-62576e5dae0b",
+      "venue_fill_id": "determinism-fill-6",
+      "side": "sell",
+      "qty": "1",
+      "price": "96",
+      "fee_amount": "0.096",
+      "fee_currency": "USDT",
+      "ts": "2026-01-01T00:57:00+00:00",
+      "is_maker": false
+    }
+  ],
+  "tearsheet": {
+    "total_return": "-0.00027696",
+    "cagr": "-0.9153578586514175065751355023",
+    "max_drawdown": "0.00027696",
+    "drawdown_duration_days": "0.04097222222222222222222222222",
+    "sharpe": "-14.73394453623095363669326509",
+    "sortino": "-10.84870406524377683371093222",
+    "calmar": "-3305.018264917018726802193466",
+    "omega": "0E+31",
+    "win_rate": "0",
+    "profit_factor": "0E+3",
+    "avg_win": null,
+    "avg_loss": "-8.104",
+    "expectancy": "-8.104",
+    "time_in_market": "0.4406779661016949152542372883",
+    "total_fees": "0.696",
+    "slippage": null,
+    "fees_pct_of_gross": "2.577777777777777777777777778",
+    "currency": "USDT"
+  }
+}
