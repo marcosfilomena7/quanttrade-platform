@@ -8,6 +8,13 @@ never on `infrastructure/`, per the Dependency Rule. Concrete adapters
 (`SimulatedClock`, `CursorMarketDataView`, `HistoricalFeed`, all
 T-P2-01/02/03) satisfy those Protocols structurally and are supplied
 by the caller.
+
+`compute_tearsheet` (T-P2-11) is the metrics/tearsheet computation
+module: given a run's own equity curve and fills, it computes total
+return, CAGR, drawdown, the Sharpe/Sortino/Calmar/Omega ratios, trade
+statistics, and fee drag as a JSON-serializable `Tearsheet` dict — pure
+calculation, with no dependency on `run_backtest` or any persisted
+entity.
 """
 
 from __future__ import annotations
@@ -20,12 +27,16 @@ from application.backtest.loop import (
     EventSource,
     run_backtest,
 )
+from application.backtest.metrics import EquityPoint, Tearsheet, compute_tearsheet
 
 __all__ = [
     "AdvanceableClock",
     "AdvanceableMarketDataView",
     "BacktestResult",
     "BacktestStrategy",
+    "EquityPoint",
     "EventSource",
+    "Tearsheet",
+    "compute_tearsheet",
     "run_backtest",
 ]
