@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(export PATH=\"$PATH:/c/Users/Marcos Filomena/AppData/Local/Microsoft/WinGet/Packages/ezwinports.make_Microsoft.Winget.Source_8wekyb3d8bbwe/bin\")",
+      "Bash(.venv/Scripts/mypy.exe --strict *)",
+      "Bash(mypy --strict *)",
+      "Bash(make lint)",
+      "Bash(make check)",
+      "Bash(make typecheck)",
+      "Bash(make test)",
+      "Bash(.venv/Scripts/python.exe -m pytest*)",
+      "Bash(.venv/Scripts/python -m pytest*)",
+      "Bash(.venv/Scripts/pytest.exe*)",
+      "Bash(pytest*)",
+      "Bash(.venv/Scripts/ruff.exe check .)",
+      "Bash(ruff check .)",
+      "Bash(.venv/Scripts/lint-imports.exe)",
+      "Bash(.venv/Scripts/lint-imports)",
+      "Bash(npx tsc --noEmit)"
+    ]
+  }
+}

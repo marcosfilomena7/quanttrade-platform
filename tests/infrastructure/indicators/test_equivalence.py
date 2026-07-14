@@ -9,12 +9,19 @@ One `@given`/`@settings(max_examples=100)` property per indicator (AC1),
 mirroring `tests/domain/test_position.py`'s own Hypothesis usage and
 `tests/infrastructure/indicators/test_incremental.py`'s own bar-building and
 comparison conventions (feed the same bars to both variants, compare at
-every step, `None`/`NaN` aligned the same way). `test_a_deliberately_broken_
-incremental_ema_is_caught_by_the_comparison_pattern` is AC2's own scenario
-("intentionally introducing a one-bar off-by-one... causes the test to fail
-and identify which bar diverged") turned into an assertion that the
-comparison itself would catch such a divergence, without mutating the real
-`IncrementalEMA`.
+every step, `None`/`NaN` aligned the same way).
+
+`test_a_one_bar_off_by_one_bug_in_incremental_ema_is_caught_and_localized`
+is AC2's own scenario ("intentionally introducing a one-bar off-by-one...
+causes the test to fail and identify which bar diverged"). `_OffByOneEMA`
+is a genuine, `update()`-driven test double carrying that exact bug (it
+applies each bar's close on the *next* call instead of its own) — never
+the real `IncrementalEMA`, which is untouched — fed through the same
+loop-and-compare pattern the seven properties above use. The bug's first
+observable effect lands at bar 1, not bar 0: both the correct and the
+buggy EMA seed identically from the first bar's own close, so the lag
+is invisible until the second bar, which is exactly where the comparison
+below asserts the divergence is first detected.
 """
 
 from __future__ import annotations
@@ -52,11 +59,20 @@ _BASE_TS = datetime(2026, 1, 1, tzinfo=UTC)
 
 # Strictly positive, finite, moderate-magnitude prices: rolling_volatility
 # divides by the previous close, so zero must be excluded; the bound keeps
-# squared/cumulative-sum intermediates well inside float64 range.
+# squared/cumulative-sum intermediates well inside float64 range. Hypothesis's
+# own per-example generation/bookkeeping cost (not the indicator math itself)
+# dominates this module's runtime — `--hypothesis-show-statistics` measured
+# ~1.2-1.6s of *generate-phase* time per 100-example property regardless of
+# list size in the 30-150 range tested, so `min_size`/`max_size` are kept
+# just wide enough to comfortably clear every indicator's own default period
+# (26, MACD's slow_span, is the largest) while minimizing that per-draw cost:
+# small enough that all seven 100-example properties plus the AC2 scenario
+# finish under AC3's 10-second CI budget (measured ~7-8s total at this size,
+# vs. ~9.5-19s at the previous, wider ranges).
 _PRICES = st.lists(
     st.floats(min_value=0.01, max_value=100_000.0, allow_nan=False, allow_infinity=False),
-    min_size=30,
-    max_size=150,
+    min_size=27,
+    max_size=40,
 )
 
 
@@ -184,24 +200,59 @@ def test_incremental_rolling_volatility_matches_vectorized_on_random_price_seque
         _assert_matches_reference(indicator.update(bar), float(reference[i]))
 
 
-def test_a_deliberately_broken_incremental_ema_is_caught_by_the_comparison_pattern() -> None:
+def _off_by_one_ema_step(previous: float | None, value: float, span: int) -> float:
+    """The exact same recurrence `IncrementalEMA`'s own `_ema_step` uses
+    — reproduced locally (not imported) so `_OffByOneEMA` below is a
+    self-contained test double, not a partially-real one."""
+    if previous is None:
+        return value
+    alpha = 2.0 / (span + 1)
+    return previous + alpha * (value - previous)
+
+
+class _OffByOneEMA:
+    """A test-only double for `IncrementalEMA` carrying an intentional
+    one-bar-lag bug: each `update(bar)` call applies the *previous*
+    bar's close instead of the current one. Exists only to prove the
+    comparison pattern used by every property above actually catches
+    and localizes such a bug — the real `IncrementalEMA` is never
+    touched or imported here."""
+
+    def __init__(self, span: int) -> None:
+        self._span = span
+        self._value: float | None = None
+        self._pending_close: float | None = None
+
+    def update(self, bar: Candle) -> Decimal:
+        close = float(bar.close)
+        input_value = self._pending_close if self._pending_close is not None else close
+        self._value = _off_by_one_ema_step(self._value, input_value, self._span)
+        self._pending_close = close
+        return Decimal(repr(self._value))
+
+
+def test_a_one_bar_off_by_one_bug_in_incremental_ema_is_caught_and_localized() -> None:
     """TASKS.md T-P2-10 AC2, verbatim: "Intentionally introducing a
-    one-bar off-by-one in the incremental EMA causes the test to fail and
-    identify which bar diverged." A one-bar-shifted "incremental" EMA is
-    built locally (the real `IncrementalEMA` is never touched) and the same
-    comparison every property above performs is shown to reject it, at a
-    specific, identifiable bar index."""
+    one-bar off-by-one in the incremental EMA causes the test to fail
+    and identify which bar diverged." `_OffByOneEMA` (above) is fed the
+    same bars, through the same per-bar comparison every property in
+    this module uses, and the first divergent bar is asserted to be
+    exactly bar 1 — not merely "some" bar — confirming the comparison
+    both fails *and* pinpoints where."""
     prices = _price_series(seed=7, n=50)
     bars = _bars(list(prices))
     reference = ema(prices, span=10)
 
-    shifted = [None, *(Decimal(repr(float(v))) for v in reference[:-1])]
+    broken = _OffByOneEMA(span=10)
+    actual = [broken.update(bar) for bar in bars]
 
-    first_divergence = next(
-        i for i, (result, bar) in enumerate(zip(shifted, bars, strict=True)) if result is None
-        or result != Decimal(repr(float(reference[i])))
+    divergence = next(
+        (i for i, value in enumerate(actual) if value != Decimal(repr(float(reference[i])))),
+        None,
     )
-    assert first_divergence == 0
+
+    assert divergence is not None, "expected the one-bar-lag bug to be detected"
+    assert divergence == 1, f"expected the bug to first manifest at bar 1, not bar {divergence}"
 
 
 def _price_series(seed: int, n: int) -> np.ndarray:
